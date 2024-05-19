@@ -435,12 +435,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1626c7795a6249dabbae0f3d3badb28b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  planeWidth: 32
-  planeHeight: 32
-  pointsPerWidth: 32
-  pointsPerHeight: 32
-  templateMesh: {fileID: -5908892734110768478, guid: c606da9bec875cc46b55a16087aa6163,
-    type: 3}
+  planeSize: 5
+  pointsPerAxis: 64
   planeAsset: {fileID: 7088305687625611892, guid: 7db3bfd319bf9144389d51048b00e10d,
     type: 3}
   perlinNoiseGenerator: {fileID: 605590275}
