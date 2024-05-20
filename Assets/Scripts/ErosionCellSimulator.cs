@@ -1,14 +1,26 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace DefaultNamespace
 {
-    public class ErosionCellSimulator : IErosionCellSimulator
+    public class ErosionCellSimulator : MonoBehaviour
     {
+       [SerializeField] float distance = 0.5f;
+
+       [SerializeField] float waterDefaultVolume = 1f;
+       [SerializeField] float waterEvaporation = 0.01f;
+       [SerializeField] float gravity = 20f;
+       [SerializeField] float minSlope = -4f;
+       [SerializeField] float erosionSpeed = 0.9f;
+       [SerializeField] float depositionSpeed = 0.02f;
+       [SerializeField] int iterationsCount = 50;
+       [SerializeField] float sedimentCapacity = 0.5f;
+        
         private float[][] _heightMap;
         private float[][] _waterLevel;
 
-        private readonly int _xLength;
-        private readonly int _yLength;
+        private int _xLength;
+        private int _yLength;
 
         public float[][] HeightMap => _heightMap;
         
@@ -30,21 +42,60 @@ namespace DefaultNamespace
             SetupWaterLevel(10);
         }
 
-        public void SimulateDroplet()
+        public void SetupSimulator(float[][] heightMap)
         {
-            var distance = 0.5f;
+            _heightMap = heightMap;
 
-            var currentPosition = new Vector2Int(Random.Range(0, _xLength), Random.Range(0, _yLength));
-            var waterVolume = 1f;
-            var waterEvaporation = 0.001f;
-            var gravity = 20f;
-            var minSlope = -4f;
-            var erosionSpeed = 0.9f;
-            var depositionSpeed = 0.02f;
-            var iterations = 50;
+            _yLength = heightMap.Length;
+            _xLength = heightMap[0].Length;
+            
+            _waterLevel = new float[heightMap.GetLength(0)][];
+
+            for (var y = 0; y < _yLength; ++y)
+                _waterLevel[y] = new float[_xLength];
+        }
+
+        public bool IsPointInBounds(Vector2Int point, float pointRadius, int resolution)
+        {
+            var pointLeftX = point.x - pointRadius;
+            var pointRightX = point.x + pointRadius;
+            var pointTopY = point.y - pointRadius;
+            var pointBottomY = point.y + pointRadius;
+
+            return pointLeftX >= 0 &&
+                   pointRightX < resolution &&
+                   pointTopY >= 0 &&
+                   pointBottomY < resolution;
+        }
+
+        public Vector2Int[] GetPositionsInRadius(Vector2Int position, int pointRadius)
+        {
+            var squareVolume = pointRadius * pointRadius * 4;
+            var result = new List<Vector2Int>(squareVolume);
+
+            for (var x = position.x - pointRadius; x < position.x + pointRadius; ++x)
+            {
+                for (var y = position.y - pointRadius; y < position.y + pointRadius; ++y)
+                {
+                    var positionInBound = new Vector2Int(x, y);
+
+                    if (Vector2Int.Distance(position, positionInBound) <= pointRadius)
+                        result.Add(positionInBound);
+                }
+            }
+            
+            return result.ToArray();
+        }
+        
+        public void SimulateDroplet(Vector2Int currentPosition)
+        {
+            var iterations = iterationsCount;
+            var waterVolume = waterDefaultVolume;
             var carriedSediment = 0f;
+            var speed = 0f;
+            var dropletRadius = 5;
 
-            while (iterations > 0)
+            while (iterations > 0 && waterVolume > 0)
             {
                 var currentHeight = _heightMap[currentPosition.x][currentPosition.y];
 
@@ -53,64 +104,90 @@ namespace DefaultNamespace
                 var topPosition = currentPosition - Vector2Int.up;
                 var bottomPosition = currentPosition - Vector2Int.down;
                 
-                var outflow = 0f;
-                var inflow = 0f;
-
                 var lowestPosition = currentPosition;
+                var currentLowestHeight = currentHeight;
 
+                // Check for lowest point
                 if (leftPosition.x >= 0)
                 {
                     var leftHeight = _heightMap[leftPosition.x][leftPosition.y];
                     
-                    if (leftHeight < currentHeight)
+                    
+                    if (leftHeight < currentLowestHeight)
+                    {
                         lowestPosition = leftPosition;
+                        currentLowestHeight = leftHeight;
+                    }
                 }
 
                 if (rightPosition.x < _xLength)
                 {
                     var rightHeight = _heightMap[rightPosition.x][rightPosition.y];
                     
-                    if (rightHeight < currentHeight)
+                    if (rightHeight < currentLowestHeight)
+                    {
                         lowestPosition = rightPosition;
+                        currentLowestHeight = rightHeight;
+                    }
                 }
 
                 if (topPosition.y >= 0)
                 {
                     var topHeight = _heightMap[topPosition.x][topPosition.y];
                     
-                    if (topHeight < currentHeight)
+                    if (topHeight < currentLowestHeight)
+                    {
                         lowestPosition = topPosition;
+                        currentLowestHeight = topHeight;
+                    }
                 }
 
                 if (bottomPosition.y < _yLength)
                 {
                     var bottomHeight = _heightMap[bottomPosition.x][bottomPosition.y];
                     
-                    if (bottomHeight < currentHeight)
+                    if (bottomHeight < currentLowestHeight)
+                    {
                         lowestPosition = bottomPosition;
+                    }
                 }
+                
                 
                 var lowestHeight = _heightMap[lowestPosition.x][lowestPosition.y];
                 var lowestSlope = Mathf.Min(minSlope, CalculateSlope(currentHeight, lowestHeight, distance));
                 var heightDifference = currentHeight - lowestHeight;
+                var slopeStrength = lowestSlope / minSlope;
 
-                var takenSediment = Mathf.Abs(lowestSlope * heightDifference * erosionSpeed);
+                var sedimentQuantity = carriedSediment / (sedimentCapacity * waterVolume);
+                var sedimentAccumulationRate = 1 - sedimentQuantity;
+                var sedimentDepositionRate = sedimentQuantity;
+
+                var takenSediment =
+                    Mathf.Abs(sedimentAccumulationRate * heightDifference/* * erosionSpeed * slopeStrength*/);
+                var depositedSediment =
+                    carriedSediment * sedimentDepositionRate * depositionSpeed * (1 - slopeStrength);
                 
-                if (takenSediment > heightDifference / 3)
-                    takenSediment = heightDifference / 3;
+                if (takenSediment > heightDifference)
+                    takenSediment = heightDifference;
+                
+                if (carriedSediment > (sedimentCapacity * waterVolume))
+                    carriedSediment = (sedimentCapacity * waterVolume);
 
-                carriedSediment += takenSediment;
 
-                var depositedSediment = carriedSediment * depositionSpeed / Mathf.Max(0.1f, 1 - (lowestSlope / 4));
-
-                _heightMap[currentPosition.x][currentPosition.y] += depositedSediment - takenSediment;
-
+                var totalSedimentDelta = (depositedSediment - takenSediment) / 15;
+                carriedSediment -= totalSedimentDelta;
+                _heightMap[currentPosition.x][currentPosition.y] += totalSedimentDelta;
+                
                 currentPosition = lowestPosition;
                 
                 waterVolume -= waterEvaporation;
                 --iterations;
             }
         }
+        
+        
+        
+        
         
         public void SimulateStep()
         {

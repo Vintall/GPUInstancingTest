@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using DefaultNamespace;
 using NoiseTest;
-using Services.NoiseGeneration;
 using Services.NoiseGeneration.Impls;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Serialization;
+using UnityEngine.Windows;
 
 namespace Services.PlaneGeneration.Impls
 {
@@ -17,10 +15,13 @@ namespace Services.PlaneGeneration.Impls
         [SerializeField] private int iterationsCount;
         [SerializeField] private TerrainChunk planeAsset;
         [SerializeField] private PerlinNoiseGenerator perlinNoiseGenerator;
+        [SerializeField] private ErosionCellSimulator erosionCellSimulator;
         [SerializeField] private bool useErrosion;
+        [SerializeField] private Transform terrainChunksHolder;
+            
         private void Start()
         {
-            GeneratePlane();
+            
         }
 
         public T[][] GenerateGrid<T>()
@@ -37,9 +38,7 @@ namespace Services.PlaneGeneration.Impls
 
         public void ApplyPerlin(ref Vector3[][] grid)
         {
-            OpenSimplexNoise openSimplexNoise = new OpenSimplexNoise(3248);
-            //var halfSize = size / 2;
-            //var stepBetweenPoints = size / pointsPerAxis;
+            var openSimplexNoise = new OpenSimplexNoise(3248);
             
             for (var y = 0; y < pointsPerAxis; ++y)
             {
@@ -67,9 +66,10 @@ namespace Services.PlaneGeneration.Impls
 
             ApplyPerlin(ref heightMap);
             
-            var planeObject = Instantiate(planeAsset);
+            var planeObject = Instantiate(planeAsset, terrainChunksHolder);
             var newMesh = new Mesh();
             var triangles = new List<int>();
+            var texture2D = new Texture2D(pointsPerAxis, pointsPerAxis);
             
             for (var y = 0; y < pointsPerAxis - 1; ++y)
             {
@@ -85,6 +85,9 @@ namespace Services.PlaneGeneration.Impls
                 }
             }
 
+            var minHeight = 0f;
+            var maxHeight = 0f;
+
             if (useErrosion)
             {
                 planeObject.name += " Erroded";
@@ -98,12 +101,16 @@ namespace Services.PlaneGeneration.Impls
                     }
                 }
 
-                ErosionCellSimulator erosionCellSimulator = new ErosionCellSimulator(heightMapForErosion);
+                erosionCellSimulator.SetupSimulator(heightMapForErosion);
 
                 for (var i = 0; i < iterationsCount; ++i)
                 {
-                    erosionCellSimulator.SimulateDroplet();
+                    var position = new Vector2Int(Random.Range(0, pointsPerAxis), Random.Range(0, pointsPerAxis));
+                    erosionCellSimulator.SimulateDroplet(position);
                 }
+
+                minHeight = heightMap[0][0].y;
+                maxHeight = heightMap[0][0].y;
 
                 for (var y = 0; y < pointsPerAxis; ++y)
                 {
@@ -111,18 +118,42 @@ namespace Services.PlaneGeneration.Impls
                     {
                         heightMap[y][x] = new Vector3(heightMap[y][x].x, erosionCellSimulator.HeightMap[y][x],
                             heightMap[y][x].z);
+
+                        if (heightMap[y][x].y < minHeight)
+                            minHeight = heightMap[y][x].y;
+                        
+                        if (heightMap[y][x].y > maxHeight)
+                            maxHeight = heightMap[y][x].y;
                     }
                 }
             }
 
-            var heightMapLinear = new Vector3[pointsPerAxis * pointsPerAxis];
+            var difference = maxHeight - minHeight;
             
-            for(var y = 0;y<pointsPerAxis;++y)
+            for (var y = 0; y < pointsPerAxis; ++y)
+            {
+                for (var x = 0; x < pointsPerAxis; ++x)
+                {
+                    var colorValue = (heightMap[y][x].y - minHeight) / difference;
+                    texture2D.SetPixel(y, x, new Color(colorValue, colorValue, colorValue));
+                }
+            }
+            
+            //var path = $"{Application.dataPath}\\Maps\\{Random.Range(0, 100000).ToString()}.png";
+            var path = $"C:\\Users\\Vintall\\Desktop\\Maps\\{Random.Range(0, 100000).ToString()}.png";
+            
+            File.WriteAllBytes(path, texture2D.EncodeToPNG());
+            
+            
+            
+            var heightMapLinear = new Vector3[pointsPerAxis * pointsPerAxis];
+
+            for (var y = 0; y < pointsPerAxis; ++y) 
             for (var x = 0; x < pointsPerAxis; ++x)
             {
                 heightMapLinear[y * pointsPerAxis + x] = heightMap[y][x];
             }
-            
+
             newMesh.vertices = heightMapLinear;
             newMesh.triangles = triangles.ToArray();
             newMesh.RecalculateNormals();

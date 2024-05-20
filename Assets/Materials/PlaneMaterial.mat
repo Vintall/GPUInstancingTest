@@ -21,18 +21,18 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: PlaneMaterial
-  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: b21ec256c75159a409c288eff5eeaf06,
+    type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
+  m_ValidKeywords: []
+  m_InvalidKeywords:
   - _RECEIVE_SHADOWS_OFF
-  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap:
-    RenderType: Opaque
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -126,6 +126,7 @@ Material:
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Surface: 0
+    - _Treshold: 0.78
     - _UVSec: 0
     - _WorkflowMode: 1
     - _ZWrite: 1
@@ -133,5 +134,7 @@ Material:
     - _BaseColor: {r: 0.3996011, g: 0.9063915, b: 0.46352297, a: 1}
     - _Color: {r: 0.39960107, g: 0.9063915, b: 0.4635229, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
+    - _GrassColor: {r: 0.10155987, g: 0.2264151, b: 0.043787822, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
+    - _StoneColor: {r: 0.254717, g: 0.254717, b: 0.254717, a: 0}
   m_BuildTextureStacks: []
