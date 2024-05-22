@@ -126,7 +126,7 @@ Material:
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Surface: 0
-    - _Treshold: 0.78
+    - _Treshold: 0.75
     - _UVSec: 0
     - _WorkflowMode: 1
     - _ZWrite: 1
