@@ -136,33 +136,11 @@ namespace DefaultNamespace
                 SedimentConcentration = 0
             };
 
-            var friction = 0.01f;
+            var friction = 0.1f;
 
             while (iterations > 0 && droplet.WaterVolume > 0)
             {
                 var flooredPosition = Vector2Int.FloorToInt(new Vector2(droplet.Position.x, droplet.Position.z));
-                /*var gridPositions = new Vector2Int[]
-                {
-                    flooredPosition,
-                    flooredPosition + Vector2Int.up,
-                    flooredPosition + Vector2Int.right,
-                    flooredPosition + Vector2Int.up + Vector2Int.right
-                };
-                var nearestPosition = gridPositions[0];
-                var nearestDistance = Vector2.Distance(droplet.Position, nearestPosition);
-
-                for (var i = 1; i < gridPositions.Length; ++i)
-                {
-                    var newDistance = Vector2.Distance(gridPositions[i], droplet.Position);
-
-                    if (newDistance >= nearestDistance)
-                        continue;
-
-                    nearestDistance = newDistance;
-                    nearestPosition = gridPositions[i];
-                }
-
-                */
                 
                 if (flooredPosition.x < 0 ||
                     flooredPosition.x >= _resolution - 1 ||
@@ -170,7 +148,6 @@ namespace DefaultNamespace
                     flooredPosition.y >= _resolution - 1)
                     return;
 
-                //var normal = GetSurfaceNormal(nearestPosition, droplet.Position);
                 var normal = GetSurfaceNormal(flooredPosition, new Vector2(droplet.Position.x, droplet.Position.z));
                 
                 //Accelerate particle using newtonian mechanics using the surface normal.
@@ -179,10 +156,10 @@ namespace DefaultNamespace
                 droplet.Position += droplet.Speed;
                 droplet.Speed *= 1.0f - friction; //Friction Factor
 
-                if ((int)droplet.Position.x <= 0 ||
-                    (int)droplet.Position.x > _resolution - 1 ||
-                    (int)droplet.Position.z <= 0 ||
-                    (int)droplet.Position.z > _resolution - 1)
+                if (droplet.Position.x <= 0 ||
+                    droplet.Position.x > _resolution - 1 ||
+                    droplet.Position.z <= 0 ||
+                    droplet.Position.z > _resolution - 1)
                     return;
 
                 //Compute sediment capacity difference
@@ -193,15 +170,12 @@ namespace DefaultNamespace
                 if (maxsediment < 0.0)
                     maxsediment = 0;
                         
-                //var sdiff = maxsediment - droplet.SedimentConcentration;
-                var sdiff = 0.1f - droplet.SedimentConcentration;
-
-                //Act on the Heightmap and Droplet!
+                var sdiff = maxsediment - droplet.SedimentConcentration;
+                //var sdiff = 0.1f - droplet.SedimentConcentration;
 
                 droplet.SedimentConcentration += depositionSpeed * sdiff;
                 _heightMap[flooredPosition.y][flooredPosition.x] -= Vector3.up * (droplet.WaterVolume * depositionSpeed * sdiff);
 
-                //Evaporate the Droplet (Note: Proportional to Volume! Better: Use shape factor to make proportional to the area instead.)
                 droplet.WaterVolume *= (1.0f - waterEvaporation);
 
                  --iterations;

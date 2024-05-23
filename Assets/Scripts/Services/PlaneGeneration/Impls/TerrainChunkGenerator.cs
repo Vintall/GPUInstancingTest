@@ -1,13 +1,12 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System;
+using System.Diagnostics;
 using DefaultNamespace;
 using NoiseTest;
 using Services.NoiseGeneration.Impls;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Serialization;
-using UnityEngine.Windows;
+using Debug = UnityEngine.Debug;
+using Random = UnityEngine.Random;
 
 namespace Services.PlaneGeneration.Impls
 {
@@ -37,13 +36,20 @@ namespace Services.PlaneGeneration.Impls
             for (var x = 0; x < resolution; ++x)
             {
                 var point = grid[z][x];
-                point.y = (float)openSimplexNoise.Evaluate(point.x, point.z);
+                point.y = (float)(
+                    openSimplexNoise.Evaluate(point.x / 4, point.z / 4) + 
+                    openSimplexNoise.Evaluate(point.x / 2, point.z / 2) / 2 + 
+                    openSimplexNoise.Evaluate(point.x, point.z) / 4 + 
+                    openSimplexNoise.Evaluate(point.x * 2, point.z * 2) / 8);
                 grid[z][x] = point;
             }
         }
 
         public TerrainChunk GeneratePlane()
         {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            
             var meshData = meshDataGenerator.GenerateMesh(resolution, planeSize);
             
             ApplyPerlin(ref meshData.Vertices);
@@ -86,6 +92,9 @@ namespace Services.PlaneGeneration.Impls
             planeObject.MeshFilter.mesh = newMesh;
 
             lastGenerated = planeObject;
+
+            stopwatch.Stop();
+            Debug.Log($"Time: {Math.Round(stopwatch.ElapsedMilliseconds / 1000f, 2)} sec");
             
             return planeObject;
         }
