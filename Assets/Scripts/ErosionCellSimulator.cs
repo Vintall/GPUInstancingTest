@@ -174,7 +174,7 @@ namespace DefaultNamespace
                 //var sdiff = 0.1f - droplet.SedimentConcentration;
 
                 droplet.SedimentConcentration += depositionSpeed * sdiff;
-                _heightMap[flooredPosition.y][flooredPosition.x] -= Vector3.up * (droplet.WaterVolume * depositionSpeed * sdiff);
+                _heightMap[flooredPosition.y][flooredPosition.x] -= Vector3.up * (droplet.WaterVolume * depositionSpeed * sdiff) / 200f;
 
                 droplet.WaterVolume *= (1.0f - waterEvaporation);
 

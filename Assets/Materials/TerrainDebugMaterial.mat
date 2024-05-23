@@ -38,8 +38,8 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _HighestPosition: 3.13
-    - _LowestPosition: -0.86
+    - _HighestPosition: 4.27
+    - _LowestPosition: -0.76
     - _QueueControl: 0
     - _QueueOffset: 0
     - _Treshold: 0

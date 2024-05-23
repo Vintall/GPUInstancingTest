@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using DefaultNamespace;
 using NoiseTest;
@@ -18,6 +19,16 @@ namespace Services.PlaneGeneration.Impls
         [SerializeField] private HeightTextureDrawer heightTextureDrawer;
         [SerializeField] private GausianBlur gausianBlur;
         
+        [Serializable]
+        public struct NoiseLayer
+        {
+            public Vector2 Scale;
+            public Vector2 Displacement;
+            public float Influence;
+        }
+
+        [SerializeField] private List<NoiseLayer> noiseLayers;
+        
         [SerializeField] private bool useErrosion;
         [SerializeField] private bool applyGaussianBlur;
         
@@ -36,11 +47,16 @@ namespace Services.PlaneGeneration.Impls
             for (var x = 0; x < resolution; ++x)
             {
                 var point = grid[z][x];
-                point.y = (float)(
-                    openSimplexNoise.Evaluate(point.x / 4, point.z / 4) + 
-                    openSimplexNoise.Evaluate(point.x / 2, point.z / 2) / 2 + 
-                    openSimplexNoise.Evaluate(point.x, point.z) / 4 + 
-                    openSimplexNoise.Evaluate(point.x * 2, point.z * 2) / 8);
+
+                double height = 0;
+                for (var i = 0; i < noiseLayers.Count; ++i)
+                {
+                    var noiseLayer = noiseLayers[i];
+                    height += openSimplexNoise.Evaluate((point.x + noiseLayer.Displacement.x) / noiseLayer.Scale.x,
+                                  (point.z + noiseLayer.Displacement.y) / noiseLayer.Scale.y) *
+                              noiseLayer.Influence;
+                }
+                point.y = (float)height;
                 grid[z][x] = point;
             }
         }
