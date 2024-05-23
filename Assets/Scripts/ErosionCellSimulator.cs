@@ -5,8 +5,6 @@ namespace DefaultNamespace
 {
     public class ErosionCellSimulator : MonoBehaviour
     {
-       [SerializeField] float distance = 0.5f;
-
        [SerializeField] float waterDefaultVolume = 1f;
        [SerializeField] float waterEvaporation = 0.01f;
        [SerializeField] float gravity = 20f;
@@ -93,9 +91,6 @@ namespace DefaultNamespace
 
         Vector3 GetSurfaceNormal(Vector2Int flooredPosition, Vector2 particlePosition) // x = x, y = z
         {
-            var scale = distance;
-
-            // [x][y]
             var squareGrid = new Vector3[][]
             {
                 new Vector3[]
@@ -115,17 +110,19 @@ namespace DefaultNamespace
 
 
             if (distanceToFloor < distanceToCeil)
-            {
-                return Vector3.Cross(squareGrid[0][1] - squareGrid[0][0], squareGrid[1][0] - squareGrid[0][0]).normalized;
-            }
-            else if(distanceToFloor > distanceToCeil)
-            {
-                return Vector3.Cross(squareGrid[1][0] - squareGrid[1][1], squareGrid[0][1] - squareGrid[1][1]);
-            }
-            else
-            {
-                return ((squareGrid[1][0] + squareGrid[0][1] - squareGrid[0][0] - squareGrid[1][1]) / 2).normalized;
-            }
+                return Vector3.Cross(squareGrid[0][1] - squareGrid[0][0], squareGrid[1][0] - squareGrid[0][0])
+                    .normalized;
+            
+            if (distanceToFloor > distanceToCeil)
+                return Vector3.Cross(squareGrid[1][0] - squareGrid[1][1], squareGrid[0][1] - squareGrid[1][1])
+                    .normalized;
+
+            var normal = ((squareGrid[1][0] + squareGrid[0][1] - squareGrid[0][0] - squareGrid[1][1]) / 2).normalized;
+
+            if (normal.y < 0)
+                normal *= -1;
+
+            return normal;
         }
 
         public void SimulateDroplet(Vector2 currentPosition)
@@ -133,20 +130,18 @@ namespace DefaultNamespace
             var iterations = iterationsCount;
             var droplet = new Droplet()
             {
-                Position = currentPosition,
+                Position = new Vector3(currentPosition.x, 0, currentPosition.y),
                 Speed = Vector3.zero,
                 WaterVolume = waterDefaultVolume,
                 SedimentConcentration = 0
             };
 
             var friction = 0.01f;
-            //var dropletRadius = 3;
-            //var dropletVolume = Mathf.PI * dropletRadius * dropletRadius;
 
             while (iterations > 0 && droplet.WaterVolume > 0)
             {
-                var flooredPosition = Vector2Int.FloorToInt(droplet.Position);
-                var gridPositions = new Vector2Int[]
+                var flooredPosition = Vector2Int.FloorToInt(new Vector2(droplet.Position.x, droplet.Position.z));
+                /*var gridPositions = new Vector2Int[]
                 {
                     flooredPosition,
                     flooredPosition + Vector2Int.up,
@@ -167,13 +162,16 @@ namespace DefaultNamespace
                     nearestPosition = gridPositions[i];
                 }
 
-                if (nearestPosition.x <= 0 ||
-                    nearestPosition.x >= _resolution - 1 ||
-                    nearestPosition.y <= 0 ||
-                    nearestPosition.y >= _resolution - 1)
+                */
+                
+                if (flooredPosition.x < 0 ||
+                    flooredPosition.x >= _resolution - 1 ||
+                    flooredPosition.y < 0 ||
+                    flooredPosition.y >= _resolution - 1)
                     return;
 
-                var normal = GetSurfaceNormal(nearestPosition, droplet.Position);
+                //var normal = GetSurfaceNormal(nearestPosition, droplet.Position);
+                var normal = GetSurfaceNormal(flooredPosition, new Vector2(droplet.Position.x, droplet.Position.z));
                 
                 //Accelerate particle using newtonian mechanics using the surface normal.
                 var acceleration = normal;
@@ -183,160 +181,29 @@ namespace DefaultNamespace
 
                 if ((int)droplet.Position.x <= 0 ||
                     (int)droplet.Position.x > _resolution - 1 ||
-                    (int)droplet.Position.y <= 0 ||
-                    (int)droplet.Position.y > _resolution - 1)
+                    (int)droplet.Position.z <= 0 ||
+                    (int)droplet.Position.z > _resolution - 1)
                     return;
 
                 //Compute sediment capacity difference
                 var maxsediment = droplet.WaterVolume * droplet.Speed.magnitude *
-                                    (_heightMap[nearestPosition.x][nearestPosition.y].y -
-                                     _heightMap[(int)droplet.Position.x][(int)droplet.Position.y].y);
+                                    (_heightMap[flooredPosition.y][flooredPosition.x].y -
+                                     _heightMap[(int)droplet.Position.z][(int)droplet.Position.x].y);
+                
                 if (maxsediment < 0.0)
                     maxsediment = 0;
-                var sdiff = maxsediment - droplet.SedimentConcentration;
+                        
+                //var sdiff = maxsediment - droplet.SedimentConcentration;
+                var sdiff = 0.1f - droplet.SedimentConcentration;
 
                 //Act on the Heightmap and Droplet!
 
                 droplet.SedimentConcentration += depositionSpeed * sdiff;
-                _heightMap[nearestPosition.x][nearestPosition.y] -= Vector3.up * (droplet.WaterVolume * depositionSpeed * sdiff);
+                _heightMap[flooredPosition.y][flooredPosition.x] -= Vector3.up * (droplet.WaterVolume * depositionSpeed * sdiff);
 
                 //Evaporate the Droplet (Note: Proportional to Volume! Better: Use shape factor to make proportional to the area instead.)
                 droplet.WaterVolume *= (1.0f - waterEvaporation);
 
-                // var xSlope = (xAxisHeight - currentHeight) / distance;
-                // var ySlope = (yAxisHeight - currentHeight) / distance;
-                //
-                // var slope = new Vector2(xSlope, ySlope);
-                //
-                // var leftPosition = currentPosition + Vector2Int.left;
-                // var rightPosition = currentPosition + Vector2Int.right;
-                // var topPosition = currentPosition - Vector2Int.up;
-                // var bottomPosition = currentPosition - Vector2Int.down;
-                //
-                // //var lowestPosition = currentPosition;
-                // //var currentLowestHeight = currentHeight;
-                //
-                // var isLeftPointExist = IsPointInBounds(leftPosition, 0, _resolution);
-                // var isRightPointExist = IsPointInBounds(rightPosition, 0, _resolution);
-                // var isTopPointExist = IsPointInBounds(topPosition, 0, _resolution);
-                // var isBottomPointExist = IsPointInBounds(bottomPosition, 0, _resolution);
-                //
-                // float xAxisHeight = 0f;
-                // float yAxisHeight = 0f;
-                //
-                // if (isLeftPointExist && isRightPointExist)
-                // {
-                //     var leftHeight = _heightMap[leftPosition.x][leftPosition.y];
-                //     var rightHeight = _heightMap[rightPosition.x][rightPosition.y];
-                //
-                //     xAxisHeight = (- leftHeight + rightHeight) / 2;
-                // }
-                // else if (isLeftPointExist)
-                //     xAxisHeight = _heightMap[leftPosition.x][leftPosition.y];
-                // else
-                //     xAxisHeight = _heightMap[rightPosition.x][rightPosition.y];
-                //
-                // if (isTopPointExist && isBottomPointExist)
-                // {
-                //     var topHeight = _heightMap[topPosition.x][topPosition.y];
-                //     var bottomHeight = _heightMap[bottomPosition.x][bottomPosition.y];
-                //
-                //     yAxisHeight = (topHeight + bottomHeight) / 2;
-                // }
-                // else if (isTopPointExist)
-                //     yAxisHeight = _heightMap[topPosition.x][topPosition.y];
-                // else
-                //     yAxisHeight = _heightMap[bottomPosition.x][bottomPosition.y];
-                //
-                //
-                //
-                //
-                // // Check for lowest point
-                // // if (leftPosition.x >= 0)
-                // // {
-                // //     var leftHeight = _heightMap[leftPosition.x][leftPosition.y];
-                // //     
-                // //     
-                // //     if (leftHeight < currentLowestHeight)
-                // //     {
-                // //         lowestPosition = leftPosition;
-                // //         currentLowestHeight = leftHeight;
-                // //     }
-                // // }
-                // //
-                // // if (rightPosition.x < resolution)
-                // // {
-                // //     var rightHeight = _heightMap[rightPosition.x][rightPosition.y];
-                // //     
-                // //     if (rightHeight < currentLowestHeight)
-                // //     {
-                // //         lowestPosition = rightPosition;
-                // //         currentLowestHeight = rightHeight;
-                // //     }
-                // // }
-                // //
-                // // if (topPosition.y >= 0)
-                // // {
-                // //     var topHeight = _heightMap[topPosition.x][topPosition.y];
-                // //     
-                // //     if (topHeight < currentLowestHeight)
-                // //     {
-                // //         lowestPosition = topPosition;
-                // //         currentLowestHeight = topHeight;
-                // //     }
-                // // }
-                // //
-                // // if (bottomPosition.y < resolution)
-                // // {
-                // //     var bottomHeight = _heightMap[bottomPosition.x][bottomPosition.y];
-                // //     
-                // //     if (bottomHeight < currentLowestHeight)
-                // //     {
-                // //         lowestPosition = bottomPosition;
-                // //     }
-                // // }
-                //
-                //
-                // //var lowestHeight = _heightMap[lowestPosition.x][lowestPosition.y];
-                // //var lowestSlope = Mathf.Min(minSlope, CalculateSlope(currentHeight, lowestHeight, distance));
-                // //var heightDifference = currentHeight - lowestHeight;
-                // var slopeStrength = lowestSlope / minSlope;
-                //
-                // var sedimentQuantity = carriedSediment / (sedimentCapacity * waterVolume);
-                // var sedimentAccumulationRate = 1 - sedimentQuantity;
-                // var sedimentDepositionRate = sedimentQuantity;
-                //
-                // var takenSediment =
-                //     Mathf.Abs(sedimentAccumulationRate * heightDifference/* * erosionSpeed * slopeStrength*/);
-                // var depositedSediment =
-                //     carriedSediment * sedimentDepositionRate * depositionSpeed * (1 - slopeStrength);
-                //
-                // if (takenSediment > heightDifference)
-                //     takenSediment = heightDifference;
-                //
-                // if (carriedSediment > (sedimentCapacity * waterVolume))
-                //     carriedSediment = (sedimentCapacity * waterVolume);
-                //
-                //
-                // var totalSedimentDelta = (depositedSediment - takenSediment) / dropletVolume;
-                // carriedSediment -= totalSedimentDelta;
-                //
-                // var affectedPoints = GetPositionsInRadius(currentPosition, dropletRadius, _resolution);
-                //
-                // for (var i = 0; i < affectedPoints.Length; ++i)
-                // {
-                //     var affectedPoint = affectedPoints[i];
-                //     var distanceToPoint = Vector2Int.Distance(affectedPoint, currentPosition);
-                //     var influence = (1 - distanceToPoint / dropletRadius);
-                //     influence *= influence;
-                //     _heightMap[affectedPoint.x][affectedPoint.y] +=
-                //         totalSedimentDelta * influence;
-                // }
-                // //_heightMap[currentPosition.x][currentPosition.y] += totalSedimentDelta;
-                //
-                // currentPosition = lowestPosition;
-                //
-                // waterVolume -= waterEvaporation;
                  --iterations;
             }
         }

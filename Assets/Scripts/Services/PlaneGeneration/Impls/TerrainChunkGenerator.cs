@@ -17,12 +17,15 @@ namespace Services.PlaneGeneration.Impls
         [SerializeField] private PerlinNoiseGenerator perlinNoiseGenerator;
         [SerializeField] private ErosionCellSimulator erosionCellSimulator;
         [SerializeField] private HeightTextureDrawer heightTextureDrawer;
+        [SerializeField] private GausianBlur gausianBlur;
+        
+        [SerializeField] private bool useErrosion;
+        [SerializeField] private bool applyGaussianBlur;
         
         [SerializeField] private float planeSize;
         [SerializeField] private int resolution;
         [SerializeField] private int iterationsCount;
         [SerializeField] private MeshDataGenerator meshDataGenerator;
-        [SerializeField] private bool useErrosion;
         [SerializeField] private Transform terrainChunksHolder;
         private TerrainChunk lastGenerated;
         
@@ -59,9 +62,11 @@ namespace Services.PlaneGeneration.Impls
                 {
                     var position = new Vector2(Random.Range(0f, resolution - 1), Random.Range(0f, resolution - 1));
                     erosionCellSimulator.SimulateDroplet(position);
-
                 }
             }
+
+            if (applyGaussianBlur)
+                gausianBlur.ApplyGaussianBlur(ref meshData.Vertices, meshData.Resolution);
 
             heightTextureDrawer.GenerateTexture(meshData.Vertices, resolution);
             
@@ -76,6 +81,7 @@ namespace Services.PlaneGeneration.Impls
             newMesh.RecalculateNormals();
             newMesh.RecalculateTangents();
             newMesh.RecalculateBounds();
+            newMesh.RecalculateUVDistributionMetrics();
             
             planeObject.MeshFilter.mesh = newMesh;
 
