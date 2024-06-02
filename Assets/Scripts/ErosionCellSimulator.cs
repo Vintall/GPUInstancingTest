@@ -87,6 +87,7 @@ namespace DefaultNamespace
             public Vector3 Speed;
             public float WaterVolume;
             public float SedimentConcentration;
+            public float SedimentCapacity;
         }
 
         Vector3 GetSurfaceNormal(Vector2Int flooredPosition, Vector2 particlePosition) // x = x, y = z
@@ -163,18 +164,20 @@ namespace DefaultNamespace
                     return;
 
                 //Compute sediment capacity difference
-                var maxsediment = droplet.WaterVolume * droplet.Speed.magnitude *
-                                    (_heightMap[flooredPosition.y][flooredPosition.x].y -
-                                     _heightMap[(int)droplet.Position.z][(int)droplet.Position.x].y);
+                var heightDifference = _heightMap[flooredPosition.y][flooredPosition.x].y -
+                                       _heightMap[(int)droplet.Position.z][(int)droplet.Position.x].y;
+                
+                var maxsediment = droplet.WaterVolume * droplet.Speed.magnitude * heightDifference;
+
                 
                 if (maxsediment < 0.0)
                     maxsediment = 0;
                         
                 var sdiff = maxsediment - droplet.SedimentConcentration;
-                //var sdiff = 0.1f - droplet.SedimentConcentration;
 
                 droplet.SedimentConcentration += depositionSpeed * sdiff;
-                _heightMap[flooredPosition.y][flooredPosition.x] -= Vector3.up * (droplet.WaterVolume * depositionSpeed * sdiff) / 200f;
+                _heightMap[flooredPosition.y][flooredPosition.x] -= Vector3.up * Mathf.Min(
+                    droplet.WaterVolume * depositionSpeed * sdiff, heightDifference);
 
                 droplet.WaterVolume *= (1.0f - waterEvaporation);
 
