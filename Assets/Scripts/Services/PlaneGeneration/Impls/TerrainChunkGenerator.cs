@@ -6,6 +6,7 @@ using NoiseTest;
 using Services.NoiseGeneration.Impls;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
 
@@ -18,6 +19,8 @@ namespace Services.PlaneGeneration.Impls
         [SerializeField] private ErosionCellSimulator erosionCellSimulator;
         [SerializeField] private HeightTextureDrawer heightTextureDrawer;
         [SerializeField] private GausianBlur gausianBlur;
+        [Header("Resimulation")]
+        public TerrainChunk SimulatableTerrainChunk = null;
         
         [Serializable]
         public struct NoiseLayer
@@ -37,7 +40,7 @@ namespace Services.PlaneGeneration.Impls
         [SerializeField] private int iterationsCount;
         [SerializeField] private MeshDataGenerator meshDataGenerator;
         [SerializeField] private Transform terrainChunksHolder;
-        private TerrainChunk lastGenerated;
+        public TerrainChunk LastGenerated;
         
         public void ApplyPerlin(ref Vector3[][] grid)
         {
@@ -106,13 +109,59 @@ namespace Services.PlaneGeneration.Impls
             newMesh.RecalculateUVDistributionMetrics();
             
             planeObject.MeshFilter.mesh = newMesh;
+            planeObject.MeshData = meshData;
 
-            lastGenerated = planeObject;
+            LastGenerated = planeObject;
 
             stopwatch.Stop();
             Debug.Log($"Time: {Math.Round(stopwatch.ElapsedMilliseconds / 1000f, 2)} sec");
             
             return planeObject;
+        }
+        
+        public TerrainChunk GeneratePlane(TerrainChunk simulatableTerrainChunk)
+        {
+            if (!simulatableTerrainChunk)
+                return null;
+            
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            
+            var meshData = simulatableTerrainChunk.MeshData;
+            var newMesh = simulatableTerrainChunk.MeshFilter.mesh;
+            
+            if (useErrosion)
+            {
+                erosionCellSimulator.SetupSimulator(meshData.Vertices);
+
+                for (var i = 0; i < iterationsCount; ++i)
+                {
+                    var position = new Vector2(Random.Range(0f, resolution - 1), Random.Range(0f, resolution - 1));
+                    erosionCellSimulator.SimulateDroplet(position);
+                }
+            }
+
+            heightTextureDrawer.GenerateTexture(meshData.Vertices, resolution);
+            
+            var heightMapLinear = new Vector3[resolution * resolution];
+
+            for (var z = 0; z < resolution; ++z)
+            for (var x = 0; x < resolution; ++x)
+                heightMapLinear[z * resolution + x] = meshData.Vertices[z][x];
+
+            newMesh.vertices = heightMapLinear;
+            newMesh.triangles = meshData.Triangles;
+            newMesh.RecalculateNormals();
+            newMesh.RecalculateTangents();
+            newMesh.RecalculateBounds();
+            newMesh.RecalculateUVDistributionMetrics();
+            
+            simulatableTerrainChunk.MeshFilter.mesh = newMesh;
+
+            stopwatch.Stop();
+            Debug.Log($"Time: {Math.Round(stopwatch.ElapsedMilliseconds / 1000f, 2)} sec");
+            
+            return simulatableTerrainChunk;
         }
     }
 
@@ -124,7 +173,15 @@ namespace Services.PlaneGeneration.Impls
             base.OnInspectorGUI();
             if (GUILayout.Button("RegeneratePlane"))
             {
-                (target as TerrainChunkGenerator).GeneratePlane();
+                var targetT = (target as TerrainChunkGenerator);
+
+                if (targetT.SimulatableTerrainChunk)
+                {
+                    targetT.GeneratePlane(targetT.SimulatableTerrainChunk);
+                    return;
+                }
+                
+                targetT.GeneratePlane();
             }
         }
     }

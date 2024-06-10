@@ -1,4 +1,4 @@
-﻿using Unity.VisualScripting;
+﻿using Services.PlaneGeneration.Impls;
 using UnityEditor;
 using UnityEngine;
 
@@ -16,6 +16,8 @@ namespace DefaultNamespace
         [SerializeField] private MeshFilter meshFilter;
 
         public MeshFilter MeshFilter => meshFilter;
+        
+        public MeshData MeshData { get; set; }
         
         private void OnDrawGizmos()
         {
