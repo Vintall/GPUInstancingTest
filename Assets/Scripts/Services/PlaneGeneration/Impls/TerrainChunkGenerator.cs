@@ -140,6 +140,9 @@ namespace Services.PlaneGeneration.Impls
                     erosionCellSimulator.SimulateDroplet(position);
                 }
             }
+			
+			if (applyGaussianBlur)
+                gausianBlur.ApplyGaussianBlur(ref meshData.Vertices, meshData.Resolution);
 
             heightTextureDrawer.GenerateTexture(meshData.Vertices, resolution);
             
