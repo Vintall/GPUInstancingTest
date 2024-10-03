@@ -36,6 +36,8 @@ namespace Services.PlaneGeneration.Impls
                 texture2D.SetPixel(x, z, finalColor);
             }
             
+            Directory.CreateDirectory($"C:\\Users\\Vintall\\Desktop\\Maps\\");
+            
             var path = $"C:\\Users\\Vintall\\Desktop\\Maps\\{Random.Range(0, 1000000).ToString()}.png";
             File.WriteAllBytes(path, texture2D.EncodeToPNG());
         }
